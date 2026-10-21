@@ -5,7 +5,7 @@ A security-conscious Discord MCP server for Claude and other MCP clients. It can
 ## Features
 
 - Send, read, edit, delete, reply to, and react to messages
-- Send images/files from validated URLs; optional restricted local files in stdio mode
+- Send images/files from validated URLs; optional restricted local files (stdio, or HTTP with a separate explicit opt-in)
 - List allowed servers, channels, emojis, and stickers; send stickers and set presence
 - Send Direct Messages to explicitly allowed recipients
 - **Send Voice Messages** using ElevenLabs TTS and bounded ffmpeg processing
@@ -38,7 +38,8 @@ Policy fields:
 - `allowedGuildIds`: permitted Discord guild IDs. Empty means all guilds only in local stdio mode.
 - `allowedChannelIds`: optional channel restriction. A direct channel ID is still checked against both channel and guild policy.
 - `allowedDmUserIds`: exact DM recipient IDs; empty disables DMs.
-- `allowLocalFiles`: defaults false. Local paths are always rejected in HTTP mode.
+- `allowLocalFiles`: defaults false. In HTTP mode local paths are still rejected unless `allowLocalFilesOverHttp` is also true.
+- `allowLocalFilesOverHttp`: defaults false. Separate opt-in so a config written for stdio never starts serving local files over HTTP by accident. Requires `allowLocalFiles`; the root allowlist below still applies.
 - `allowedLocalRoots`: required when local files are enabled. Real paths are checked after symlink resolution.
 
 Limits are shown with defaults in `config.example.json`. Messages and TTS text are bounded, mentions are suppressed by default, replies fail if the referenced message is absent, network work has timeouts/byte limits, and voice work has a concurrency cap. Typing delay defaults off; set min/max milliseconds to enable it.
@@ -81,7 +82,7 @@ Do not directly publish this process or use an unauthenticated tunnel. Put it be
 
 URL attachments permit only HTTP(S), resolve DNS before each request, reject private/loopback/link-local/multicast/metadata address ranges, manually revalidate redirects, and enforce timeout and byte limits. DNS rebinding protection is best-effort with platform `fetch`; a hardened egress proxy/firewall is recommended for high-assurance remote deployments.
 
-Local files are explicit opt-in, async, size-bounded, and constrained to real paths below configured roots. They are unavailable over Streamable HTTP regardless of configuration.
+Local files are explicit opt-in, async, size-bounded, and constrained to real paths below configured roots. Over Streamable HTTP they are unavailable unless `allowLocalFilesOverHttp` is also set — the caller of an HTTP endpoint need not be on this machine, so keep that root to a folder you would be happy to see posted.
 
 ## Voice messages
 

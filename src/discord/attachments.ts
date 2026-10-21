@@ -101,7 +101,10 @@ export async function readLocalAttachment(source: string, policy: AccessPolicy, 
 
 export async function loadAttachment(source: string, filename: string | undefined, policy: AccessPolicy, limits: LimitsConfig, remoteMode: boolean): Promise<AttachmentBuilder> {
   const remote = /^https?:\/\//i.test(source);
-  if (!remote && remoteMode) throw new Error("Remote HTTP mode cannot read local file paths");
+  // Over HTTP the caller need not be on this machine, so a local path is a remote-triggered
+  // disk read. Refused unless the operator opted in explicitly; readLocalAttachment then still
+  // enforces allowLocalFiles and the realpath root allowlist.
+  if (!remote && remoteMode && !policy.allowLocalFilesOverHttp) throw new Error("Remote HTTP mode cannot read local file paths");
   const loaded = remote ? await fetchAttachment(source, limits) : await readLocalAttachment(source, policy, limits.attachmentBytes);
   return new AttachmentBuilder(loaded.data, { name: filename?.trim() || loaded.name || "attachment.bin" });
 }
