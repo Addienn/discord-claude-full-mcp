@@ -26,6 +26,7 @@ const fileSchema = z.object({
     allowedChannelIds: z.array(snowflake).default([]),
     allowedDmUserIds: z.array(snowflake).default([]),
     allowLocalFiles: z.boolean().default(false),
+    allowLocalFilesOverHttp: z.boolean().default(false),
     allowedLocalRoots: z.array(z.string().min(1)).default([]),
   }).partial().optional(),
   limits: z.object({
@@ -54,6 +55,8 @@ export interface AccessPolicy {
   allowedChannelIds: string[];
   allowedDmUserIds: string[];
   allowLocalFiles: boolean;
+  /** Separate, explicit opt-in: without it, HTTP mode never reads local paths, even if allowLocalFiles is on for stdio. */
+  allowLocalFilesOverHttp: boolean;
   allowedLocalRoots: string[];
   remoteMode: boolean;
 }
@@ -146,6 +149,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig 
   const roots = (file.policy?.allowedLocalRoots ?? []).map(root => resolve(PROJECT_ROOT, root));
   const allowLocalFiles = file.policy?.allowLocalFiles ?? false;
   if (allowLocalFiles && roots.length === 0) throw new Error("policy.allowedLocalRoots is required when allowLocalFiles is true");
+  const allowLocalFilesOverHttp = file.policy?.allowLocalFilesOverHttp ?? false;
+  if (allowLocalFilesOverHttp && !allowLocalFiles) throw new Error("policy.allowLocalFilesOverHttp requires policy.allowLocalFiles to be true");
   return {
     discordToken,
     elevenLabsApiKey: env.ELEVENLABS_API_KEY?.trim() || null,
@@ -156,6 +161,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig 
       allowedChannelIds: channels,
       allowedDmUserIds: dms,
       allowLocalFiles,
+      allowLocalFilesOverHttp,
       allowedLocalRoots: roots,
       remoteMode: transport === "http",
     },
